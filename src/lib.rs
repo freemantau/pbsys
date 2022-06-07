@@ -17,7 +17,6 @@ extern "stdcall" fn DllMain(hinstDLL: *mut u8, reason: u32, reserved: *mut u8) -
         1 => {
             // ATTACH
             env_logger::init();
-            info!("attach");
         }
         0 => {
             // DETACH

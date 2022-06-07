@@ -55,23 +55,34 @@ pub unsafe extern "stdcall" fn test_int(obthis:ObVm,nargs:u32)->i16{
 
 #[no_mangle]
 pub unsafe extern "stdcall" fn test_type(obthis:ObVm,nargs:u32)->i16{
+    let mut isnull = false;
+    let v_bool      = obthis.get_next_arg().unwrap();
+    let v_double    = obthis.get_next_arg().unwrap();
+    let v_decimal   = obthis.get_next_arg().unwrap();
+    let v_string    = obthis.get_next_arg().unwrap();
+    let v_any       = obthis.get_next_arg().unwrap();
+    let v_blob      = obthis.get_next_arg().unwrap();
+    let v_date      = obthis.get_next_arg().unwrap();
+    let v_time      = obthis.get_next_arg().unwrap();
+    let v_datetime  = obthis.get_next_arg().unwrap();
+    let v_longlong  = obthis.get_next_arg().unwrap();
     
-    let v_double = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_decimal = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_string = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_any = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_blob = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_date = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_time = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_datetime= OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    let v_longlong = OT_GET_NEXT_EVALED_ARG_NO_CONVERT(obthis.as_ptr());
-    
-    //let var1 = arg1.as_ref().unwrap().get_int_unchecked();
-    //let var2 = arg2.as_ref().unwrap().get_int_unchecked();
-
-    let strptr = (*v_string).get_valptr();
-    
-
+    /* bool */
+    let pbboolean = v_bool.get_bool_unchecked();
+    /* double */
+    let pbdouble = v_double.get_double_unchecked();
+    /* decimal */
+    let pbdec = v_decimal.get_valptr::<Psh_Dec>();
+    let pbdesref = &(*pbdec);
+    /* string */
+    let pbstr = v_string.get_string_unchecked();
+    let str = pbstr.to_string_lossy();
+    /* any */
+    /* blob */
+    /* date */
+    /* time */
+    /* datetime */
+    /* longlong */
     let data = ObData::new(123,ValueType::Int);
     let _ = OT_SET_RETURN_VAL(obthis.as_ptr(),&data);
 

@@ -1,5 +1,13 @@
+use rust_decimal::Decimal;
+use widestring::WideCString;
+
 use crate::dll::*;
 use std::ptr::NonNull;
+
+
+pub type PBString = WideCString;
+
+
 #[repr(C)]
 pub struct _POBVM([u8;0]);
 pub type  pobvm= NonNull<_POBVM>;
@@ -84,11 +92,16 @@ impl AsValue for u16{
         }
     }
 }
+impl AsValue for f32{
+    fn asvalue(&self)->UnionValue {
+        UnionValue { data: f32::to_be_bytes(*self) }
+    }
+}
 
 
 impl AsValue for bool{
     fn asvalue(&self)->UnionValue {
-        todo!()
+        UnionValue { data: [*self as u8,0,0,0] }
     }
 }
 
@@ -98,13 +111,13 @@ impl ObData
     {
         ObData{
             val:value.asvalue(),
-            info:valtype.into(),
+            info:valtype.into_obinfo_value(),
             r#type:valtype,
         }
     }
-    pub fn get_valptr(&self) -> *const u8
+    pub fn get_valptr<T>(&self) -> *const T
     {
-        usize::from_le_bytes(self.val.data) as *const u8
+        usize::from_le_bytes(self.val.data) as *const T
     }
     pub fn get_type(&self)->ValueType
     {
@@ -116,52 +129,51 @@ impl ObData
     pub fn get_ulong_unchecked(&self)->u32{
         u32::from_le_bytes(self.val.data)
     }
-
     pub fn get_int_unchecked(&self)->i16{
         i16::from_le_bytes([self.val.data[0],self.val.data[1]])
     }
     pub fn get_uint_unchecked(&self)->u16{
         u16::from_le_bytes([self.val.data[0],self.val.data[1]])
     }
-
-
-
-
-}
-
-fn ob_get_data_info(style:Ob_Data_Style,grp:Ob_Group_Types)->ObInfo
-{
-    match style{
-        Ob_Data_Style::UNDECLARED_STYLE => todo!(),
-        Ob_Data_Style::INT_STYLE => (0x05C0),
-        Ob_Data_Style::FLOAT_STYLE => (0x09C0),
-        Ob_Data_Style::PTR_STYLE => (0x0DC0),
-        Ob_Data_Style::CONST_STYLE => todo!(),
-        Ob_Data_Style::ID_STYLE => todo!(),
-        Ob_Data_Style::OBINST_STYLE => todo!(),
-        Ob_Data_Style::LONG_STYLE => (0x1DC0),
+    pub fn get_real_unchecked(&self)->f32{
+        f32::from_le_bytes(self.val.data)
     }
+    pub fn get_bool_unchecked(&self)->bool{
+        self.val.data[0] == 1
+    }
+    pub fn get_string_unchecked(&self)->PBString
+    { 
+        unsafe{PBString::from_ptr_str(self.get_valptr::<u16>())}
+    }
+     pub fn get_double_unchecked(&self)->f64
+    {
+        unsafe{*(self.get_valptr::<f64>())}
+    }
+    pub fn get_decimal_unchecked(&self)->Decimal{
+        let psh_dec = unsafe{&*self.get_valptr::<Psh_Dec>()};
+        psh_dec.into()
+    }
+
+
 }
 
-impl From<ValueType> for ObInfo
+
+impl ValueType
 {
-    fn from(typ: ValueType) -> Self {
-        match typ {
+    pub fn into_obinfo_value(self)->ObInfo{
+        match self{
             ValueType::NoType => {todo!()},
             ValueType::Int 
                 |ValueType::Uint
                 |ValueType::Boolean
                 |ValueType::Char
-                |ValueType::Byte => 
-                {ob_get_data_info(Ob_Data_Style::INT_STYLE,Ob_Group_Types::OB_SIMPLE)},
+                |ValueType::Byte => 0x05C0,
             ValueType::Long
-                |ValueType::Ulong => 
-                {ob_get_data_info(Ob_Data_Style::LONG_STYLE,Ob_Group_Types::OB_SIMPLE)},
-            ValueType::Real => 
-                {ob_get_data_info(Ob_Data_Style::FLOAT_STYLE,Ob_Group_Types::OB_SIMPLE)},
+                |ValueType::Ulong => 0x1DC0,
+            ValueType::Real => 0x09C0,
             ValueType::Double => todo!(),
             ValueType::Decimal => todo!(),
-            ValueType::String => {ob_get_data_info(Ob_Data_Style::PTR_STYLE,Ob_Group_Types::OB_SIMPLE)},
+            ValueType::String => 0x0DC0,
             ValueType::Any => todo!(),
             ValueType::Blob => todo!(),
             ValueType::Date => todo!(),
@@ -173,6 +185,15 @@ impl From<ValueType> for ObInfo
             ValueType::Dummy4 => todo!(),
             ValueType::LongLong => todo!(),
         }
+    }
+    pub fn into_obinfo_readonly(self)->ObInfo{
+        todo!()
+    }    
+    pub fn into_obinfo_ref(self)->ObInfo{
+        todo!()
+    }
+    pub fn into_obinfo_null(self)->ObInfo{
+        todo!()
     }
 }
 
@@ -247,6 +268,36 @@ pub enum Ob_Group_Types
 
 }
 
+
+#[repr(C)]
+pub struct Psh_Dec
+{
+    v:[u16;7],
+    flags:u16
+}
+/* flags 1：小数位,2：正负 */
+/* v:u128 */
+impl From<&Psh_Dec> for Decimal
+{
+    fn from(pdec: &Psh_Dec) -> Self {
+        let num = u128::from(pdec.v[0]) |
+                        (16<<u128::from(pdec.v[1]))|
+                        (32<<u128::from(pdec.v[2]))|
+                        (48<<u128::from(pdec.v[3]))|
+                        (64<<u128::from(pdec.v[4]))|
+                        (80<<u128::from(pdec.v[5]))|
+                        (96<<u128::from(pdec.v[6]));
+        let scale = pdec.flags.to_be_bytes()[0];
+        let isnag = pdec.flags.to_be_bytes()[1];
+        
+        let rt:i128 = match isnag
+        {
+            1 => (0 - num).try_into().unwrap(),
+            _ => num.try_into().unwrap()
+        };
+        Decimal::from_i128_with_scale(rt, scale.into())
+    }
+}
 /*
 #define ob_set_data_info(node,style,typ,group,vartype)			   	\
 	((node)->info = (OB_INFO_FLAGS) (							   	\

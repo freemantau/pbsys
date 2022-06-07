@@ -15,6 +15,12 @@ libloading = "0.7"
 log = "0.4.0"
 env_logger = "0.9"
 
-[dependencies.windows]
+widestring = "0.5.1"
+
+rust_decimal = "1.24"
+rust_decimal_macros = "1.24"
+
+
+# [dependencies.windows]
 # version = "0.35.0"
 # features = ["Win32_Graphics_Gdi","Win32_Foundation",]
