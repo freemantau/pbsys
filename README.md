@@ -3,24 +3,29 @@
 #### 介绍
 rust wrap pb system lib ，rust powerbuilder system Lib
 
-#### 软件架构
-软件架构说明
-
-
-#### 安装教程
-
-
-
 #### 使用说明
 
-cargo build
 
-#### 参与贡献
+RUST：
+```
+#[no_mangle]
+pub unsafe extern "stdcall" fn bit_or(obthis:ObVm,nargs:u32)->i32{
 
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+    let arg1 = obthis.get_next_arg().unwrap().get_long_unchecked();
+    let arg2 = obthis.get_next_arg().unwrap().get_long_unchecked();
+    let _ = obthis.set_return_long(arg1 | arg2);
+    return 1;
+}
+
+```
+POWERBUIDER：
+```
+function long bit_or(readonly long a,readonly long b) system library "tpsys.dll" alias for "bit_or"
+```
+
+
+
+
 
 
 #### 特技
