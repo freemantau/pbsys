@@ -4,6 +4,12 @@ use lazy_static::lazy_static;
 
 use libloading::Library;
 
+/* 
+pbstg_alloc
+pbstg_realloc
+pbstg_free
+*/
+
 lazy_static!{
     pub static ref CONTEXT:LibContext = {
         LibContext::init()

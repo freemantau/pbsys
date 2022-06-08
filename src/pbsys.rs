@@ -1,5 +1,6 @@
 use rust_decimal::Decimal;
 use widestring::WideCString;
+use chrono::naive::{NaiveDate,NaiveTime,NaiveDateTime};
 
 use crate::dll::*;
 use std::ptr::NonNull;
@@ -40,6 +41,7 @@ impl ObVm
 }
 
 
+
 pub type ObInfo = u16;
 #[repr(C,packed(1))]
 pub struct ObData
@@ -54,6 +56,22 @@ pub struct UnionValue
 {
     data:[u8;4]
 }
+
+///
+/// 对象实例
+/// Ob_INST_ID
+/// 
+/// 
+#[repr(C)]
+pub struct _POBINSTID([u8;0]);
+pub type pobinstid = NonNull<_POBINSTID>;
+
+#[repr(transparent)]
+pub struct ObInstId{
+    ptr:pobinstid
+}
+
+
 
 pub trait AsValue
 {
@@ -145,7 +163,7 @@ impl ObData
     { 
         unsafe{PBString::from_ptr_str(self.get_valptr::<u16>())}
     }
-     pub fn get_double_unchecked(&self)->f64
+    pub fn get_double_unchecked(&self)->f64
     {
         unsafe{*(self.get_valptr::<f64>())}
     }
@@ -153,7 +171,24 @@ impl ObData
         let psh_dec = unsafe{&*self.get_valptr::<Psh_Dec>()};
         psh_dec.into()
     }
-
+    pub fn get_pbdec_unchecked(&self)->&Psh_Dec{
+        unsafe{&*self.get_valptr::<Psh_Dec>()}
+    }
+    pub fn get_pbblob_unchecked(&self)->&Psh_Binary{
+        unsafe{&*(self.get_valptr::<Psh_Binary>())}
+    }
+    pub fn get_blob_unchecked(&self)->Vec<u8>{
+        self.get_pbblob_unchecked().into()
+    }
+    pub fn get_pbdate_unchecked(&self)->&Psh_Time{
+        unsafe{&*(self.get_valptr::<Psh_Time>())}
+    }
+    pub fn get_longlong_unchecked(&self)->i64{
+        unsafe{*(self.get_valptr::<i64>())}
+    }
+    pub fn get_object_unchecked(&self)->&ObInstId{
+       unsafe{&*(self.get_valptr::<ObInstId>())}
+    }
 
 }
 
@@ -270,44 +305,82 @@ pub enum Ob_Group_Types
 
 
 #[repr(C)]
+pub struct Psh_Binary
+{
+    len:u32,
+    data:[u8;1]
+}
+impl From<&Psh_Binary> for Vec<u8>{
+    fn from(pshblob: &Psh_Binary) -> Self {
+        unsafe{Vec::from_raw_parts(pshblob.data.as_ptr() as *mut u8, pshblob.len as usize, pshblob.len as usize)}
+    }
+}
+impl Psh_Binary{
+    fn len(&self)->u32{
+        self.len
+    }
+}
+
+
+#[repr(C)]
 pub struct Psh_Dec
 {
     v:[u16;7],
-    flags:u16
+    flags:[u8;2]
 }
-/* flags 1：小数位,2：正负 */
+/* flags 1：小数位,0：正负 */
 /* v:u128 */
 impl From<&Psh_Dec> for Decimal
 {
     fn from(pdec: &Psh_Dec) -> Self {
-        let num = u128::from(pdec.v[0]) |
-                        (16<<u128::from(pdec.v[1]))|
-                        (32<<u128::from(pdec.v[2]))|
-                        (48<<u128::from(pdec.v[3]))|
-                        (64<<u128::from(pdec.v[4]))|
-                        (80<<u128::from(pdec.v[5]))|
-                        (96<<u128::from(pdec.v[6]));
-        let scale = pdec.flags.to_be_bytes()[0];
-        let isnag = pdec.flags.to_be_bytes()[1];
+        let num:u128 = u128::from(pdec.v[0]) |
+                        (u128::from(pdec.v[1])<<16)|
+                        (u128::from(pdec.v[2])<<32)|
+                        (u128::from(pdec.v[3])<<48)|
+                        (u128::from(pdec.v[4])<<64)|
+                        (u128::from(pdec.v[5])<<80)|
+                        (u128::from(pdec.v[6])<<96);
+        let scale = pdec.flags[1];
+        let isnag = pdec.flags[0];
         
         let rt:i128 = match isnag
         {
-            1 => (0 - num).try_into().unwrap(),
-            _ => num.try_into().unwrap()
+            1 => (!num + 1) as i128,
+            _ => num as i128
         };
         Decimal::from_i128_with_scale(rt, scale.into())
     }
 }
-/*
-#define ob_set_data_info(node,style,typ,group,vartype)			   	\
-	((node)->info = (OB_INFO_FLAGS) (							   	\
-					 (OB_PUBLIC_MEMBER << DATA_ACCESS_SHIFT)	|  	\
-					 ((group) << DATA_GROUP_SHIFT)				|  	\
-					 (0 << DATA_FIELDTYPE_SHIFT)				|  	\
-					 ((style) << DATA_STYLE_SHIFT)				|  	\
-					 (USED << DATA_STATUS_SHIFT)				|  	\
-					 (OB_DIRECT_REF << DATA_REFTYPE_SHIFT) 		|  	\
-					 (0 << DATA_TYPEARGS_SHIFT)),					\
-	 (node)->type = (OB_CLASS_ID)typ								\
-	)
-*/
+
+#[repr(C)]
+pub struct Psh_Time{
+    tm_msec:i32,
+    tm_year:i16,
+    tm_mon:u8,
+    tm_day:u8,
+    tm_hour:u8,
+    tm_min:u8,
+    tm_sec:u8,
+    tm_filter:u8
+}
+
+
+
+
+
+
+
+
+#[cfg(text)]
+use super::*;
+#[test]
+fn psh_dec()
+{
+    /* pb -0.00123451 */
+    let psh_dec = Psh_Dec{
+        v:[57915,1,0,0,0,0,0],
+        flags:[1,8]
+    };
+    let mydec:Decimal = (&psh_dec).into();
+    assert_eq!(Decimal::from_i128_with_scale(-123451,8),mydec);
+}
