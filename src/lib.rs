@@ -1,15 +1,13 @@
+pub mod dll;
 pub mod example;
 pub mod pbsys;
-pub mod dll;
-use pbsys::*;
 use dll::*;
-
+use pbsys::*;
 
 use std::mem;
 
 #[macro_use]
 extern crate log;
-
 
 #[no_mangle]
 extern "stdcall" fn DllMain(hinstDLL: *mut u8, reason: u32, reserved: *mut u8) -> u32 {
@@ -25,5 +23,3 @@ extern "stdcall" fn DllMain(hinstDLL: *mut u8, reason: u32, reserved: *mut u8) -
     }
     return 1;
 }
-
-
