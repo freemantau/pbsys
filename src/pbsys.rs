@@ -5,7 +5,7 @@ use chrono::{
 use rust_decimal::Decimal;
 use widestring::WideCString;
 
-use crate::dll::*;
+use crate::{dll::*, refv::Ot_Ref_Pak};
 use std::ptr::NonNull;
 
 pub type PBString = WideCString;
@@ -22,9 +22,11 @@ impl ObVm {
     pub(crate) fn as_ptr(&self) -> pobvm {
         self.ptr
     }
-
     pub fn get_next_arg(&self) -> Option<&ObData> {
         unsafe { OT_GET_NEXT_EVALED_ARG_NO_CONVERT(self.as_ptr()).as_ref() }
+    }
+    pub fn get_next_lvalue_arg(&self,hnd:&mut u32)->Option<&mut ObData>{
+        unsafe{OT_GET_NEXT_LVALUE_ARG(self.as_ptr(),hnd).as_mut()}
     }
 }
 impl ObVm {
@@ -279,6 +281,30 @@ impl ObData {
     }
 }
 
+impl ObData{
+    pub fn get_valptr_ref<T>(&mut self)-> *mut T{
+        usize::from_le_bytes(self.val.data) as *mut T
+    }
+    pub fn get_refpak_unchecked(&mut self)->&Ot_Ref_Pak{
+        unsafe{&*(usize::from_le_bytes(self.val.data) as *const Ot_Ref_Pak)}
+    }
+}
+
+impl ObData{
+    pub fn set_data_value<T>(&mut self,val:&T)
+    where T:AsValue
+    {
+        self.val = val.asvalue();
+    }
+    pub fn set_data_ptrvalue<T>(&mut self,obthis:&ObVm,val:&T)
+    where T:AsPtrValue
+    {
+        self.val = val.asptrvalue(obthis)
+    }
+}
+
+
+
 impl ValueType {
     pub fn into_obinfo_value(self) -> ObInfo {
         match self {
@@ -311,7 +337,31 @@ impl ValueType {
         todo!()
     }
     pub fn into_obinfo_ref(self) -> ObInfo {
-        todo!()
+                match self {
+            ValueType::NoType => {
+                todo!()
+            }
+            ValueType::Int
+            | ValueType::Uint
+            | ValueType::Boolean
+            | ValueType::Char
+            | ValueType::Byte => 0x05C0,
+            ValueType::Long | ValueType::Ulong => 0x1DC0,
+            ValueType::Real => 0x0980,
+            ValueType::Double => 0x0D00,    
+            ValueType::Decimal => 0x0D00,
+            ValueType::String => 0x0D00,
+            ValueType::Any => todo!(),
+            ValueType::Blob => 0x0D00,
+            ValueType::Date => 0x0D00,
+            ValueType::Time => 0x0D00,
+            ValueType::DateTime => 0x0D00,
+            ValueType::Dummy1 => todo!(),
+            ValueType::Dummy2 => todo!(),
+            ValueType::Dummy3 => todo!(),
+            ValueType::Dummy4 => todo!(),
+            ValueType::LongLong => 0x0D00,
+        }
     }
     pub fn into_obinfo_null(self) -> ObInfo {
         todo!()
@@ -531,7 +581,7 @@ impl From<NaiveDateTime> for Psh_Time {
     }
 }
 
-#[cfg(text)]
+#[cfg(test)]
 use super::*;
 #[test]
 fn test_dec() {
