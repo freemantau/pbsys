@@ -1,12 +1,17 @@
+use crate::{
+    arr::{Ob_Array_Id, Parray},
+    dll::*,
+    refv::*,
+};
 use chrono::{
     naive::{NaiveDate, NaiveDateTime, NaiveTime},
     Datelike, Timelike,
 };
+use core::num;
+use num_enum::TryFromPrimitive;
 use rust_decimal::Decimal;
+use std::ptr::{null, NonNull};
 use widestring::WideCString;
-
-use crate::{dll::*, refv::Ot_Ref_Pak};
-use std::ptr::NonNull;
 
 pub type PBString = WideCString;
 
@@ -22,11 +27,17 @@ impl ObVm {
     pub(crate) fn as_ptr(&self) -> pobvm {
         self.ptr
     }
+    ///
+    /// 获取value指类型参数
+    ///
     pub fn get_next_arg(&self) -> Option<&ObData> {
         unsafe { OT_GET_NEXT_EVALED_ARG_NO_CONVERT(self.as_ptr()).as_ref() }
     }
-    pub fn get_next_lvalue_arg(&self,hnd:&mut u32)->Option<&mut ObData>{
-        unsafe{OT_GET_NEXT_LVALUE_ARG(self.as_ptr(),hnd).as_mut()}
+    ///
+    /// 获取ref引用类型参数
+    ///
+    pub fn get_next_lvalue_arg(&self, hnd: &mut u32) -> Option<&mut ObData> {
+        unsafe { OT_GET_NEXT_LVALUE_ARG(self.as_ptr(), hnd).as_mut() }
     }
 }
 impl ObVm {
@@ -58,6 +69,114 @@ impl ObVm {
         unsafe { OB_DUP_TIME(self.as_ptr(), val) }
     }
 }
+impl ObVm {
+    ///
+    /// 获取数组长度
+    ///
+    pub fn get_array_num_items(&self, ptr: Parray) -> u32 {
+        unsafe { OT_ARRAY_NUM_ITEMS(self.as_ptr(), ptr) }
+    }
+    ///
+    /// 获取数组数据引用
+    ///
+    pub fn get_array_index(&self, ptr: Parray, index: u32) -> &ObData {
+        unsafe { &*(OT_ARRAY_INDEX(self.as_ptr(), ptr, index)) }
+    }
+    ///
+    /// 获取数组数据引用mut
+    ///
+    pub fn get_array_index_mut(&self, ptr: Parray, index: u32) -> &mut ObData {
+        unsafe { &mut *(OT_ARRAY_INDEX(self.as_ptr(), ptr, index)) }
+    }
+    ///
+    /// create boundarray
+    ///
+    pub fn array_create_bounded(
+        &self,
+        num_items: u32,
+        elmttype: Ob_Class_Hndl,
+        varinfo: u16,
+        dim: u16,
+        boundsarray: Pvoid,
+    ) -> Parray {
+        unsafe {
+            OT_ARRAY_CREATE_BOUNDED(
+                self.as_ptr(),
+                num_items,
+                elmttype,
+                varinfo,
+                dim,
+                boundsarray,
+            )
+        }
+    }
+    ///
+    /// create unboundarray
+    ///
+    pub fn array_create_unbounded(&self, elmttype: Ob_Class_Hndl, varinfo: u16) -> Parray {
+        unsafe { OT_ARRAY_CREATE_UNBOUNDED(self.as_ptr(), elmttype, varinfo) }
+    }
+}
+
+///
+/// refpak method begin
+///
+impl ObVm {
+    pub fn assign_ref_int(&self, refpak: &Ot_Ref_Pak, val: i32, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_INT(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_uint(&self, refpak: &Ot_Ref_Pak, val: u32, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_UINT(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_byte(&self, refpak: &Ot_Ref_Pak, val: u8, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_BYTE(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_long(&self, refpak: &Ot_Ref_Pak, val: i32, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_LONG(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_ulong(&self, refpak: &Ot_Ref_Pak, val: u32, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_ULONG(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_dec(&self, refpak: &Ot_Ref_Pak, val: &Psh_Dec, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_DEC(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_float(&self, refpak: &Ot_Ref_Pak, val: f32, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_FLOAT(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_double(&self, refpak: &Ot_Ref_Pak, val: &f64, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_DOUBLE(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_longlong(&self, refpak: &Ot_Ref_Pak, val: &i64, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_LONGLONG(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_string(&self, refpak: &Ot_Ref_Pak, val: &[u16], nullval: bool) {
+        unsafe { OT_ASSIGN_REF_STRING(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_bool(&self, refpak: &Ot_Ref_Pak, val: bool, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_BOOL(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_char(&self, refpak: &Ot_Ref_Pak, val: u16, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_CHAR(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_blob(&self, refpak: &Ot_Ref_Pak, val: &Psh_Binary, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_BLOB(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_datetime(&self, refpak: &Ot_Ref_Pak, val: &Psh_Time, nullval: bool) {
+        unsafe { OT_ASSIGN_REF_DATETIME(self.as_ptr(), refpak, val, nullval) };
+    }
+    pub fn assign_ref_obinst(&self, refpak: &Ot_Ref_Pak, val: Pvoid, nullval: bool, ty: u16) {
+        unsafe { OT_ASSIGN_REF_OBINST(self.as_ptr(), refpak, val, nullval, ty) };
+    }
+    pub fn assign_ref_enum(&self, refpak: &Ot_Ref_Pak, val: i32, nullval: bool, ty: u16) {
+        unsafe { OT_ASSIGN_REF_ENUM(self.as_ptr(), refpak, val, nullval, ty) };
+    }
+    pub fn assign_ref_array(&self, refpak: &Ot_Ref_Pak, val: Parray, nullval: bool, ty: u16) {
+        unsafe { OT_ASSIGN_REF_ARRAY(self.as_ptr(), refpak, val, nullval, ty) };
+    }
+    pub fn assign_ref_any(&self, refpak: &Ot_Ref_Pak, val: &ObData, rhs_class_id: u16) {
+        unsafe { OT_ASSIGN_REF_ANY(self.as_ptr(), refpak, val, rhs_class_id) };
+    }
+}
 
 pub type ObInfo = u16;
 #[repr(C, packed(1))]
@@ -67,6 +186,7 @@ pub struct ObData {
     r#type: ValueType,
 }
 
+#[derive(Default)]
 #[repr(C)]
 pub struct UnionValue {
     data: [u8; 4],
@@ -203,6 +323,26 @@ impl AsPtrValue for &Psh_Time {
     }
 }
 
+impl AsPtrValue for Parray {
+    fn asptrvalue(&self, obthis: &ObVm) -> UnionValue {
+        let p = *self as *const _ as usize;
+        let p2 = p;
+        UnionValue {
+            data: (*self as *const _ as usize).to_le_bytes(),
+        }
+    }
+}
+
+impl Default for ObData {
+    fn default() -> Self {
+        Self {
+            val: UnionValue::default(),
+            info: Default::default(),
+            r#type: ValueType::NoType,
+        }
+    }
+}
+
 impl ObData {
     pub fn new(value: impl AsValue, valtype: ValueType) -> Self {
         ObData {
@@ -221,10 +361,19 @@ impl ObData {
 }
 
 impl ObData {
+    pub fn as_ptr(&self) -> Pvoid {
+        self as *const _ as Pvoid
+    }
+}
+
+impl ObData {
     pub fn get_valptr<T>(&self) -> *const T {
         usize::from_le_bytes(self.val.data) as *const T
     }
     pub fn get_type(&self) -> ValueType {
+        self.r#type
+    }
+    pub fn get_type_unchecked(&self) -> u16 {
         self.r#type.into()
     }
     pub fn get_byte_unchecked(&self) -> u8 {
@@ -279,31 +428,46 @@ impl ObData {
     pub fn get_object_unchecked(&self) -> &ObInstId {
         unsafe { &*(self.get_valptr::<ObInstId>()) }
     }
+    pub fn get_arrayid_unchecked(&self) -> Parray {
+        usize::from_le_bytes(self.val.data) as Parray
+    }
 }
 
-impl ObData{
-    pub fn get_valptr_ref<T>(&mut self)-> *mut T{
+///
+/// array
+///
+impl ObData {
+    pub fn get_data_array(&self) {
+        todo!()
+    }
+    pub fn get_data_arrayinst(&self) {
+        todo!()
+    }
+}
+
+impl ObData {
+    pub fn get_valptr_ref<T>(&mut self) -> *mut T {
         usize::from_le_bytes(self.val.data) as *mut T
     }
-    pub fn get_refpak_unchecked(&mut self)->&Ot_Ref_Pak{
-        unsafe{&*(usize::from_le_bytes(self.val.data) as *const Ot_Ref_Pak)}
+    pub fn get_refpak_unchecked(&mut self) -> &mut Ot_Ref_Pak {
+        unsafe { &mut *(usize::from_le_bytes(self.val.data) as *mut Ot_Ref_Pak) }
     }
 }
 
-impl ObData{
-    pub fn set_data_value<T>(&mut self,val:&T)
-    where T:AsValue
+impl ObData {
+    pub fn set_data_value<T>(&mut self, val: &T)
+    where
+        T: AsValue,
     {
         self.val = val.asvalue();
     }
-    pub fn set_data_ptrvalue<T>(&mut self,obthis:&ObVm,val:&T)
-    where T:AsPtrValue
+    pub fn set_data_ptrvalue<T>(&mut self, obthis: &ObVm, val: &T)
+    where
+        T: AsPtrValue,
     {
         self.val = val.asptrvalue(obthis)
     }
 }
-
-
 
 impl ValueType {
     pub fn into_obinfo_value(self) -> ObInfo {
@@ -337,7 +501,7 @@ impl ValueType {
         todo!()
     }
     pub fn into_obinfo_ref(self) -> ObInfo {
-                match self {
+        match self {
             ValueType::NoType => {
                 todo!()
             }
@@ -348,7 +512,7 @@ impl ValueType {
             | ValueType::Byte => 0x05C0,
             ValueType::Long | ValueType::Ulong => 0x1DC0,
             ValueType::Real => 0x0980,
-            ValueType::Double => 0x0D00,    
+            ValueType::Double => 0x0D00,
             ValueType::Decimal => 0x0D00,
             ValueType::String => 0x0D00,
             ValueType::Any => todo!(),
@@ -370,7 +534,7 @@ impl ValueType {
 
 #[repr(u16)]
 #[non_exhaustive]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, TryFromPrimitive)]
 pub enum ValueType {
     NoType = 0,
     Int,
@@ -394,6 +558,11 @@ pub enum ValueType {
     Dummy4,
     LongLong,
     Byte,
+}
+impl Into<u16> for ValueType {
+    fn into(self) -> u16 {
+        self as u16
+    }
 }
 
 #[repr(u16)]
@@ -431,6 +600,12 @@ pub enum ValAccess {
 pub enum Ob_Group_Types {
     OB_SIMPLE = 0,
     OB_ARRAY,
+}
+
+#[repr(C)]
+pub struct Ob_Class_Hndl {
+    pub(crate) group_hndl: u16,
+    pub(crate) class_id: u16,
 }
 
 #[repr(C)]

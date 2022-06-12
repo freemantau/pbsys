@@ -1,8 +1,8 @@
-use std::{ffi::c_void, ptr::NonNull};
+use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
-use crate::{*, refv::Ot_Ref_Pak};
+use crate::{arr::Ob_Array_Id, refv::Ot_Ref_Pak, *};
 
 #[no_mangle]
 pub unsafe extern "stdcall" fn bit_or(obthis: ObVm, nargs: u32) -> u32 {
@@ -224,42 +224,110 @@ extern "stdcall" fn test_return_val(obthis: ObVm, nargs: u32) -> u32 {
 }
 
 #[no_mangle]
-extern "stdcall" fn test_ref_val(obthis: ObVm,nargs:u32)->u32{
+extern "stdcall" fn test_ref_val(obthis: ObVm, nargs: u32) -> u32 {
     let mut hnd = 0u32;
 
     let arg1 = obthis.get_next_lvalue_arg(&mut hnd).unwrap();
     let arg2 = obthis.get_next_arg().unwrap();
 
     match arg1.get_type() {
-
         ValueType::Long => {
             let v2 = arg2.get_long_unchecked();
             let refpak = arg1.get_refpak_unchecked();
+            let refptr = refpak.as_ptr();
             let mut pv1 = refpak.get_simple_ref().unwrap();
             let v1 = pv1.get_long_unchecked();
             let _ = pv1.set_data_value(&(v1 + v2));
-        },
+            //           obthis.assign_ref_long(refpak, 333, false);
+        }
 
         ValueType::String => {
             let v2 = arg2.get_string_unchecked().to_string_lossy();
             let refpak = arg1.get_refpak_unchecked();
             let mut pv1 = refpak.get_simple_ref().unwrap();
             let v1 = pv1.get_string_unchecked().to_string_lossy();
-            let mut v3 = String::default();
+            let mut v3 = String::from("nihao");
             v3.push_str(&v1);
             v3.push_str(&v2);
             pv1.set_data_ptrvalue(&obthis, &v3.as_str());
-            
-        },
+        }
 
-        _ => {},
+        _ => {}
     }
-
-
-
-    
 
     let data = ObData::new(true, ValueType::Boolean);
     obthis.set_return_val(&data);
+    return 1;
+}
+
+#[no_mangle]
+extern "stdcall" fn test_array(obthis: ObVm, nargs: u32) -> u32 {
+    let arg1 = obthis.get_next_arg().unwrap();
+    let arg2 = obthis.get_next_arg().unwrap();
+
+    let parr1 = arg1.get_arrayid_unchecked();
+    let parr2 = arg2.get_arrayid_unchecked();
+    let arrcnt = obthis.get_array_num_items(parr1);
+
+    let data = match arg1.get_type() {
+        ValueType::Long | ValueType::Int => {
+            let mut total = 0i32;
+            for i in 0..arrcnt {
+                let item = obthis.get_array_index(parr1, i);
+                total += item.get_long_unchecked();
+            }
+            ObData::new(total, ValueType::Long)
+        }
+        ValueType::String => {
+            let mut stotal = String::default();
+            for i in 0..arrcnt {
+                let item = obthis.get_array_index(parr1, i);
+                stotal.push_str(item.get_string_unchecked().to_string_lossy().as_str());
+            }
+            ObData::new_ptrvalue(&obthis, stotal.as_str(), ValueType::String)
+        }
+        _ => ObData::new(0i32, ValueType::Long),
+    };
+
+    obthis.set_return_val(&data);
+    return 1;
+}
+
+#[no_mangle]
+extern "stdcall" fn test_array_ref(obthis: ObVm, nargs: u32) -> u32 {
+    let mut hnd = 0u32;
+    //引用类型
+    let arg1 = obthis.get_next_lvalue_arg(&mut hnd).unwrap();
+    //值
+    let arg2 = obthis.get_next_arg().unwrap();
+
+    //数组指针
+    let parr1 = arg1.get_arrayid_unchecked();
+    let parr2 = arg2.get_arrayid_unchecked();
+
+    //此处  classid为 valuetype，OB_CLASS_ID,既 OBDATA的type
+    //group_hndl 暂不明确
+    let classhndl = Ob_Class_Hndl {
+        group_hndl: 0xffff,
+        class_id: ValueType::Long.into(),
+    };
+    let rtarr = obthis.array_create_unbounded(classhndl, 0);
+
+    //数组2 长度
+    let arrcnt = obthis.get_array_num_items(parr2);
+    let mut j = 0u32;
+    for i in (0..arrcnt).rev() {
+        let d = obthis.get_array_index_mut(rtarr, j);
+        //获取数组值
+        let item = obthis.get_array_index(parr2, i).get_long_unchecked();
+        d.set_data_value(&item);
+        j += 1;
+    }
+
+    let refd = arg1.get_refpak_unchecked().get_simple_ref().unwrap();
+    let _ = refd.set_data_ptrvalue(&obthis, &rtarr);
+
+    //arg1.set_data_ptrvalue(obthis, val)
+
     return 1;
 }
