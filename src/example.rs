@@ -2,7 +2,7 @@ use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
-use crate::{arr::Ob_Array_Id, refv::Ot_Ref_Pak, *};
+use crate::{arr::*, refv::*, pbsys::*,dll::*, obj::*};
 
 #[no_mangle]
 pub unsafe extern "stdcall" fn bit_or(obthis: ObVm, nargs: u32) -> u32 {
@@ -330,4 +330,45 @@ extern "stdcall" fn test_array_ref(obthis: ObVm, nargs: u32) -> u32 {
     //arg1.set_data_ptrvalue(obthis, val)
 
     return 1;
+}
+
+
+
+#[no_mangle]
+extern "stdcall" fn testobj_create(obthis:ObVm,nargs:u32)->u32{
+    let _ = obthis.no_return_val();
+    return 1;
+}
+#[no_mangle]
+extern "stdcall" fn testobj_destroy(obthis:ObVm,nargs:u32)->u32{
+    let _ = obthis.no_return_val();
+    return 1;
+}
+
+#[no_mangle]
+extern "stdcall" fn testobj_get(obthis:ObVm,nargs:u32)->u32{
+    let mut isnull = true;
+    let mut obj = ObClass::default();
+    obthis.get_curr_obinst(&obj, &mut isnull);
+    let mut data = ObData::default();
+    obthis.get_obinst_field(&obj, 1, &mut data);
+    
+    obthis.set_return_val(&data);
+    return 1;
+}
+
+#[no_mangle]
+extern "stdcall" fn testobj_set(obthis:ObVm,nargs:u32)->u32{
+    let mut isnull  = true;
+    let mut obj = ObClass::default();
+    let _ = obthis.get_curr_obinst(&obj, &mut isnull);
+
+    let arg1 = obthis.get_next_arg().unwrap().get_long_unchecked();
+    let mut data = ObData::new(arg1, ValueType::Long);
+
+    obthis.set_obinst_field(&obj, 1, &mut data);
+
+    obthis.no_return_val();
+    return 1;
+
 }

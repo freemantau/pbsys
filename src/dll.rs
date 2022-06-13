@@ -1,7 +1,7 @@
 use crate::arr::Parray;
 use crate::pbsys::*;
 use crate::refv::*;
-
+use crate::obj::*;
 use lazy_static::lazy_static;
 
 use libloading::Library;
@@ -17,14 +17,25 @@ lazy_static! {
         LibContext::init()
     };
     ///
-    /// pbvmxxx.dll
-    ///获取参数值/指针
-    pub static ref OT_GET_VALPTR_ARG:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&bool) -> *mut u8 > = unsafe{CONTEXT.vm.get(b"ot_get_valptr_arg").unwrap()};
-    ///设置返回
+    /// 设置返回
+    /// 
     pub static ref OT_SET_RETURN_VAL:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&ObData)> = unsafe{CONTEXT.vm.get(b"ot_set_return_val").unwrap()};
-    ///值类型  obdata
+    ///
+    /// 无返回值
+    /// 
+    pub static ref OT_NO_RETURN_VAL:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm)> = unsafe{CONTEXT.vm.get(b"ot_no_return_val").unwrap()};
+    ///
+    /// pbvmxxx.dll
+    /// 获取参数值/指针
+    pub static ref OT_GET_VALPTR_ARG:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&bool) -> *mut u8 > = unsafe{CONTEXT.vm.get(b"ot_get_valptr_arg").unwrap()};
+    ///
+    /// 值类型  obdata
+    /// 
     pub static ref OT_GET_NEXT_EVALED_ARG_NO_CONVERT:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm) -> *mut ObData> = unsafe{CONTEXT.vm.get(b"ot_get_next_evaled_arg_no_convert").unwrap()};
-    ///引用类型 再根据obdata::val指针获取引用包refpak
+    
+    ///
+    /// 引用类型 再根据obdata::val指针获取引用包refpak
+    /// 
     pub static ref OT_GET_NEXT_LVALUE_ARG:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&u32) -> *mut ObData> = unsafe{CONTEXT.vm.get(b"ot_get_next_lvalue_arg").unwrap()};
 
     ///
@@ -83,6 +94,19 @@ lazy_static! {
     pub static ref OT_ASSIGN_REF_ENUM:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&Ot_Ref_Pak,i32,bool,u16)> = unsafe{CONTEXT.vm.get(b"ot_assign_ref_enum)").unwrap()};
     pub static ref OT_ASSIGN_REF_ARRAY:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&Ot_Ref_Pak,Parray,bool,u16)> = unsafe{CONTEXT.vm.get(b"ot_assign_ref_array)").unwrap()};
     pub static ref OT_ASSIGN_REF_ANY:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&Ot_Ref_Pak,&ObData,u16)> = unsafe{CONTEXT.vm.get(b"ot_assign_ref_any)").unwrap()};
+
+
+    ///
+    /// 当前实例指针
+    /// 
+    pub static ref OT_GET_CURR_OBINST_EXPR:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&ObClass,&mut bool)->Pvoid> = unsafe{CONTEXT.vm.get(b"ot_get_curr_obinst_expr").unwrap()};
+
+    ///
+    /// 
+    /// 
+    pub static ref OB_SET_FIELD:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,pobclass,u32,&ObData)> = unsafe{CONTEXT.vm.get(b"ob_set_field").unwrap()};
+    pub static ref OB_GET_FIELD:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,pobclass,u32,&mut ObData)> = unsafe{CONTEXT.vm.get(b"ob_get_field").unwrap()};
+
 
 }
 

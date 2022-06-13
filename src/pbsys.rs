@@ -1,7 +1,8 @@
 use crate::{
-    arr::{Ob_Array_Id, Parray},
+    arr::*,
     dll::*,
     refv::*,
+    obj::*
 };
 use chrono::{
     naive::{NaiveDate, NaiveDateTime, NaiveTime},
@@ -14,6 +15,8 @@ use std::ptr::{null, NonNull};
 use widestring::WideCString;
 
 pub type PBString = WideCString;
+
+pub type Pob_Data = Option<*mut ObData>;
 
 #[repr(C)]
 pub struct _POBVM([u8; 0]);
@@ -39,8 +42,29 @@ impl ObVm {
     pub fn get_next_lvalue_arg(&self, hnd: &mut u32) -> Option<&mut ObData> {
         unsafe { OT_GET_NEXT_LVALUE_ARG(self.as_ptr(), hnd).as_mut() }
     }
+    ///
+    /// 获取当前调用实例
+    /// 
+    pub fn get_curr_obinst(&self,pobinst:&ObClass,nullval:&mut bool){
+        unsafe { OT_GET_CURR_OBINST_EXPR(self.as_ptr(), pobinst,nullval) };
+    }
+    ///
+    /// 
+    /// 
+    pub fn get_obinst_field(&self,pobinst:&ObClass,field_id:u32,data:&mut ObData){
+        let v = unsafe {OB_GET_FIELD(self.as_ptr(),pobinst.as_ptr(),field_id,data)};
+    }
+    ///
+    /// 
+    /// 
+    pub fn set_obinst_field(&self,pobinst:&ObClass,field_id:u32,data:&mut ObData){
+        unsafe { OB_SET_FIELD(self.as_ptr(),pobinst.as_ptr(),field_id,data)}
+    }
 }
 impl ObVm {
+    pub fn no_return_val(&self) {
+        unsafe { OT_NO_RETURN_VAL(self.as_ptr()) };
+    }
     pub fn set_return_val(&self, data: &ObData) {
         unsafe { OT_SET_RETURN_VAL(self.as_ptr(), data) };
     }
@@ -119,7 +143,7 @@ impl ObVm {
 }
 
 ///
-/// refpak method begin
+/// refpak method begin (TODO!) 未知
 ///
 impl ObVm {
     pub fn assign_ref_int(&self, refpak: &Ot_Ref_Pak, val: i32, nullval: bool) {
@@ -177,6 +201,11 @@ impl ObVm {
         unsafe { OT_ASSIGN_REF_ANY(self.as_ptr(), refpak, val, rhs_class_id) };
     }
 }
+
+
+
+
+
 
 pub type ObInfo = u16;
 #[repr(C, packed(1))]
