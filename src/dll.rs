@@ -49,6 +49,28 @@ lazy_static! {
     pub static ref OB_DUP_TIME:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&Psh_Time)->&Psh_Time> = unsafe{CONTEXT.vm.get(b"ob_dup_time").unwrap()};
 
     ///
+    /// alloc_<type>
+    /// 
+    pub static ref OB_ALLOC_STRING:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,u32)->&'static mut [u16]> = unsafe{CONTEXT.vm.get(b"ob_alloc_string").unwrap()};
+    pub static ref OB_ALLOC_BLOB:libloading::Symbol<'static, unsafe extern "stdcall" fn(pobvm,u32)-> &'static Psh_Binary> = unsafe{CONTEXT.vm.get(b"ob_alloc_blob").unwrap()};
+    pub static ref OB_ALLOC_DEC:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm)->&'static Psh_Dec> = unsafe{CONTEXT.vm.get(b"ob_alloc_dec").unwrap()};
+    pub static ref OB_ALLOC_DOUBLE:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm) ->&'static f64> = unsafe{CONTEXT.vm.get(b"ob_alloc_double").unwrap()};
+    pub static ref OB_ALLOC_LONGLONG:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm)->&'static i64> = unsafe{CONTEXT.vm.get(b"ob_alloc_longlong").unwrap()};
+    pub static ref OB_ALLOC_TIME:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm)->&'static Psh_Time> = unsafe{CONTEXT.vm.get(b"ob_alloc_time").unwrap()};
+
+    ///
+    /// realloc_<type>
+    /// 
+    pub static ref OB_REALLOC_STRING:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&[u16],u32)->&[u16]> = unsafe{CONTEXT.vm.get(b"ob_realloc_string").unwrap()};
+    pub static ref OB_REALLOC_BLOB:libloading::Symbol<'static, unsafe extern "stdcall" fn(pobvm,&Psh_Binary,u32)-> &Psh_Binary> = unsafe{CONTEXT.vm.get(b"ob_realloc_blob").unwrap()};
+ 
+    ///
+    /// free alloc
+    /// 
+    pub static ref OB_FREE_VALUE:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,Pvoid)> = unsafe{CONTEXT.vm.get(b"ob_free_value").unwrap()};
+    pub static ref OB_FREE_MEMORY:libloading::Symbol<'static, unsafe extern "stdcall" fn(pobvm,Pvoid)> = unsafe{CONTEXT.vm.get(b"ob_free_memory").unwrap()};
+ 
+    ///
     /// array
     ///
     pub static ref OT_ASSIGN_LVALUE_ARRAY:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&mut ObData,Parray,&mut bool)> = unsafe {CONTEXT.vm.get(b"ot_assign_lvalue_array").unwrap()};
@@ -102,11 +124,24 @@ lazy_static! {
     pub static ref OT_GET_CURR_OBINST_EXPR:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&ObClass,&mut bool)->Pvoid> = unsafe{CONTEXT.vm.get(b"ot_get_curr_obinst_expr").unwrap()};
 
     ///
-    /// 
+    /// class field 
     /// 
     pub static ref OB_SET_FIELD:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,pobclass,u32,&ObData)> = unsafe{CONTEXT.vm.get(b"ob_set_field").unwrap()};
     pub static ref OB_GET_FIELD:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,pobclass,u32,&mut ObData)> = unsafe{CONTEXT.vm.get(b"ob_get_field").unwrap()};
 
+
+
+
+
+    ///
+    /// 
+    /// pbshr*.dll
+    /// 
+    /// 
+    pub static ref PBSTG_SZ:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,pobdatavalue)->u32> = unsafe{CONTEXT.shr.get(b"pbstg_sz").unwrap()};
+    pub static ref PBSTG_ALC:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,u32,Pvoid)->Pvoid> = unsafe{CONTEXT.shr.get(b"pbstg_alc").unwrap()};
+    pub static ref PBSTG_REALC:libloading::Symbol<'static,unsafe extern "stdcall" fn(pobvm,&ObData,u32,Pvoid)->Pvoid> = unsafe{CONTEXT.shr.get(b"pbstg_realc").unwrap()};
+    
 
 }
 

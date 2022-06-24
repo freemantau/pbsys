@@ -52,7 +52,7 @@ impl ObVm {
     /// 
     /// 
     pub fn get_obinst_field(&self,pobinst:&ObClass,field_id:u32,data:&mut ObData){
-        let v = unsafe {OB_GET_FIELD(self.as_ptr(),pobinst.as_ptr(),field_id,data)};
+        unsafe {OB_GET_FIELD(self.as_ptr(),pobinst.as_ptr(),field_id,data)};
     }
     ///
     /// 
@@ -221,6 +221,9 @@ pub struct UnionValue {
     data: [u8; 4],
 }
 
+#[repr(C)]
+pub struct _POBDATAVALUE([u8;0]);
+pub type pobdatavalue = NonNull<_POBDATAVALUE>;
 ///
 /// 对象实例
 /// Ob_INST_ID
@@ -395,6 +398,22 @@ impl ObData {
     }
 }
 
+impl ObData{
+    ///
+    /// 是否引用类型的值
+    /// 
+    pub fn val_isptr(&self)->bool{
+        todo!()
+    }
+    ///
+    /// 返回引用类型值地址
+    /// 
+    pub fn val_as_ptr(&self)->pobdatavalue{
+        let d = unsafe{&*(usize::from_le_bytes(self.val.data) as *mut _POBDATAVALUE)};
+        pobdatavalue::from(d)
+    }
+}
+
 impl ObData {
     pub fn get_valptr<T>(&self) -> *const T {
         usize::from_le_bytes(self.val.data) as *const T
@@ -495,6 +514,9 @@ impl ObData {
         T: AsPtrValue,
     {
         self.val = val.asptrvalue(obthis)
+    }
+    pub fn set_data_ptr(&mut self,val:usize){
+        self.val.data = val.to_le_bytes()
     }
 }
 

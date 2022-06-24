@@ -1,8 +1,8 @@
-use std::{ffi::c_void, ptr::NonNull, sync::Arc};
+use std::{ffi::c_void, ptr::NonNull, sync::Arc, vec};
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
-use crate::{arr::*, refv::*, pbsys::*,dll::*, obj::*};
+use crate::{arr::*, refv::*, pbsys::*,dll::*, obj::*, capi::pbtypes::{OB_THIS, POB_THIS, OB_INST_ID}, _CAPI};
 
 #[no_mangle]
 pub unsafe extern "stdcall" fn bit_or(obthis: ObVm, nargs: u32) -> u32 {
@@ -341,6 +341,13 @@ extern "stdcall" fn testobj_create(obthis:ObVm,nargs:u32)->u32{
 }
 #[no_mangle]
 extern "stdcall" fn testobj_destroy(obthis:ObVm,nargs:u32)->u32{
+    let mut nullval = true;
+    let obj = ObClass::default();
+    let _ = obthis.get_curr_obinst(&obj, &mut nullval);
+
+    let mut data = ObData::default();
+    obthis.get_obinst_field(&obj, 2, &mut data);
+    unsafe{OB_FREE_VALUE(obthis.as_ptr(),data.get_valptr::<c_void>() as Pvoid)};
     let _ = obthis.no_return_val();
     return 1;
 }
@@ -371,4 +378,107 @@ extern "stdcall" fn testobj_set(obthis:ObVm,nargs:u32)->u32{
     obthis.no_return_val();
     return 1;
 
+}
+
+#[no_mangle]
+extern "stdcall" fn append(obthis:ObVm,nargs:u32)->u32{
+    let mut hnd = 0u32;
+    let refd = obthis.get_next_lvalue_arg(&mut hnd).unwrap();
+    let dst = refd.get_refpak_unchecked().get_simple_ref().unwrap();
+
+    let dststr = dst.get_string_unchecked();
+    let slidst = dststr.as_slice_with_nul();
+    let mut v:Vec<u16> = vec![];
+    v.extend_from_slice(dststr.as_slice());
+    let mut tlen = dststr.len();
+    for n in 0..(nargs-1)
+    {
+        let arg = obthis.get_next_arg().unwrap().get_string_unchecked();
+        tlen += arg.len();
+        v.extend_from_slice(
+            if n==(nargs-2) {
+                arg.as_slice_with_nul()
+            }else{   
+                arg.as_slice()}
+        );
+    }
+
+    let t = v.as_slice();
+
+  //  let tdup = unsafe{OB_DUP_STRING(obthis.as_ptr(),t)};
+
+    let tall = unsafe{OB_ALLOC_STRING(obthis.as_ptr(),tlen as u32)};
+
+    
+    unsafe{std::ptr::copy_nonoverlapping(v.as_ptr(), tall.as_mut_ptr(), tlen+1)};
+    
+    unsafe{OB_FREE_VALUE(obthis.as_ptr(),dst.get_valptr::<c_void>() as Pvoid)}
+
+    dst.set_data_ptr(tall.as_ptr() as usize);
+    obthis.set_return_val(&ObData::new(true, ValueType::Boolean));
+    return 1;
+}
+
+
+#[no_mangle]
+extern "stdcall" fn testobj_setstring(obthis:ObVm,nargs:u32)->u32{
+    let mut arg1 = obthis.get_next_arg().unwrap();
+
+    let mut isnull = true;
+    let obj = ObClass::default();
+    let _ = obthis.get_curr_obinst(&obj, &mut isnull);
+
+    let mystr = arg1.get_string_unchecked().to_string_lossy();
+    let mut data = ObData::new_ptrvalue(&obthis,mystr.as_str(),ValueType::String);
+
+    //let mut data = ObData::new_ptrvalue(&obthis, arg1.get_string_unchecked().to_string_lossy().as_str(), ValueType::String);
+
+    obthis.set_obinst_field(&obj, 2, &mut data);
+
+    //let ptr = arg1.val_as_ptr();
+    
+    let a = 100;
+    let b = 200;
+    //let sz = unsafe{PBSTG_SZ(obthis.as_ptr(),arg1.val_as_ptr() )};
+
+
+    //let buffsize = sz;
+
+    obthis.no_return_val();
+    return 1;
+}
+#[no_mangle]
+extern "stdcall" fn testobj_getstring(obthis:ObVm,nargs:u32)->u32{
+    let mut isnull = true;
+    let obj = ObClass::default();
+    let _ = obthis.get_curr_obinst(&obj, &mut isnull);
+    let mut data = ObData::default();
+    let _ = obthis.get_obinst_field(&obj, 2, &mut data);
+
+    let mystr = data.get_string_unchecked().to_string_lossy();
+
+    obthis.set_return_val(&data);
+
+    return 1;
+}
+
+
+
+#[no_mangle]
+extern "stdcall" fn bit_and(obthis:POB_THIS,nargs:u32)->u32{
+
+    let arg1 = _CAPI.vm.ot_get_next_evaled_arg_no_convert()(obthis);
+
+    let arg2 = _CAPI.vm.ot_get_next_evaled_arg_no_convert()(obthis);
+
+    
+
+
+
+    let x = 100;
+    let y = 200;
+
+
+    _CAPI.vm.ot_no_return_val()(obthis);
+    return 1;
 }
